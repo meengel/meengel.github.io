@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- Include the CesiumJS JavaScript and CSS files -->
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.88/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.88/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+</head>
+<body>
+	<div id="cesiumContainer" style="width:100%;height:100%;"></div>
+	<div id="baseLayerPickerContainer" style="position:absolute;top:13px;left:13px;width:338px;height:512px;"></div>
+  	<script>
+  	// ### Predefinitions for Viewer ###
+  	Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIwNmQ2ZTQ5ZS0zMjZlLTQ2ZjMtOTMxYy02YjM3ZmQ2ZjgwMDIiLCJpZCI6ODE1OTUsImlhdCI6MTY0NDIxODI4OH0.qnvoYt8vjupU8UXaRGZeBq8OPa1Mqfb9cq-ETU1TxVI"
+  	// ## Search Engine ##
+	function OpenStreetMapNominatimGeocoder() {}
+    OpenStreetMapNominatimGeocoder.prototype.geocode = function (input) {
+  		var endpoint = "https://nominatim.openstreetmap.org/search";
+  		var resource = new Cesium.Resource({
+			url: endpoint,
+			queryParameters: {
+  				format: "json",
+  				q: input,
+			},
+  		});
+
+  		return resource.fetchJson().then(function (results) {
+			var bboxDegrees;
+			return results.map(function (resultObject) {
+  				bboxDegrees = resultObject.boundingbox;
+  				return {
+				displayName: resultObject.display_name,
+				destination: Cesium.Rectangle.fromDegrees(
+  					bboxDegrees[2],
+  					bboxDegrees[0],
+  					bboxDegrees[3],
+  					bboxDegrees[1]
+				),
+  				};
+			});
+  		});
+	};
+	
+	// ### DEFINE VIEWER ###
+	// ## Basic Definition ##
+    const viewer = new Cesium.Viewer('cesiumContainer', {	
+      	terrainProvider: new Cesium.CesiumTerrainProvider({
+                            url: Cesium.IonResource.fromAssetId(952656),
+                         }),//Cesium.createWorldTerrain(),
+		imageryProvider: false,
+  		homeButton: true,
+		fullscreenButton: true,
+		CreditsDisplay: true,
+		infoBox: false,
+  		geocoder: new OpenStreetMapNominatimGeocoder(),
+	  	sceneMode: Cesium.SceneMode.SCENE3D,
+  		sceneModePicker: true,
+  		navigationHelpButton: false,
+	  	animation: false,
+		timeline: false,
+		baseLayerPicker: false,
+		useBrowserRecommendedResolution: true,
+	});
+	viewer._cesiumWidget._creditContainer.parentNode.removeChild(
+        viewer._cesiumWidget._creditContainer
+	);
+	viewer.scene.globe.baseColor = Cesium.Color.WHITE;
+
+    // ## Terrain Exaggeration for better visibility ##
+	viewer.scene.globe.terrainExaggeration = 1;//Math.sqrt(2);
+
+    // ## Home Camera ##
+	var extent = Cesium.Rectangle.fromDegrees(10.08,46.63,12.98,47.75);
+	//var extent = Cesium.Rectangle.fromDegrees(10.93,47.35,10.94,47.36);
+	Cesium.Camera.DEFAULT_VIEW_RECTANGLE = extent;
+
+	viewer.camera.flyToBoundingSphere(
+		new Cesium.BoundingSphere(Cesium.Cartesian3.fromDegrees(10.9337, 47.3603, 1920), 1500)
+	)
+    
+    // ## Entities ##
+    var entity = viewer.entities.add({
+        label: {
+            show: false,
+            showBackground: true,
+            font: "12px sans-serif",// monospace",
+            horizontalOrigin: Cesium.HorizontalOrigin.LEFT,
+            verticalOrigin: Cesium.VerticalOrigin.TOP,
+            pixelOffset: new Cesium.Cartesian2(15, 0),
+        },
+    });
+
+    // ## Event Handlers ##
+    // # Mouse over the globe to see the cartographic position next to mouse #
+    handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+    handler.setInputAction(
+        function(movement){
+            var cartesian = viewer.camera.pickEllipsoid(
+                movement.endPosition,
+                viewer.scene.globe.ellipsoid
+            );
+            
+            if (cartesian) {
+                var cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+                var longitudeString = Cesium.Math.toDegrees(cartographic.longitude).toFixed(4);
+                var latitudeString = Cesium.Math.toDegrees(cartographic.latitude).toFixed(4);
+        
+                entity.position = cartesian;
+                entity.label.show = true;
+                entity.label.text = longitudeString+","+latitudeString
+            }
+            else {
+                entity.label.show = false;
+            }
+        },
+        Cesium.ScreenSpaceEventType.MOUSE_MOVE
+    );
+
+    // # Return Coordinates (for copying to clipboard) #
+    function getME_coordinates(e){
+        var mousePosition = Cesium.Cartesian2(e.clientX, e.clientY); // ### TODO: NOT MOUSPOSITION, IS POSITION OF LEFT UPPER CORNER SOMEHOW ###
+        var cartesian = viewer.camera.pickEllipsoid(
+            mousePosition,
+            viewer.scene.globe.ellipsoid
+        );
+        
+        if (cartesian) {
+            var cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+            var longitudeString = Cesium.Math.toDegrees(cartographic.longitude);
+            var latitudeString = Cesium.Math.toDegrees(cartographic.latitude);
+            //var message = "LonLat: "+longitudeString+","+latitudeString+"\nLatLon: "+latitudeString+","+longitudeString;
+            //alert(message);
+            prompt("Copy LonLat to clipboard:",longitudeString+","+latitudeString);
+        }
+        else{
+            alert("Zoom in to show coordinates!")
+        }  
+    };
+    
+    // # Key Event Handling #
+    document.onkeydown = function(e){
+        var keyCode = e.keyCode;
+        if(keyCode == 17) {
+            getME_coordinates(e);
+        }
+        else if(keyCode == 17){
+            alert("Hallo!");
+        }
+    };
+
+	// ### LIMIT VIEW ###
+    
+    //navigator.geolocation.getCurrentPosition(alert); # get position of user
+
+	// ### DEFINE LAYERS ###
+	// ## Baselayer ##
+	WMTS_OpenStreetMap = new Cesium.OpenStreetMapImageryProvider({
+		url : 'https://a.tile.openstreetmap.org/',
+    });
+	// ## Bergfex ##
+	WMTS_Bergfex = new Cesium.OpenStreetMapImageryProvider({
+		url : 'http://maps.bergfex.at/osm/standard/',
+		fileExtension : "jpg",
+    });
+
+	// ## Tyrol ##
+	WMS_hillshadeDSM_1m_Tirol = new Cesium.WebMapServiceImageryProvider({
+		url: "https://gis.tirol.gv.at/arcgis/services/Service_Public/terrain/MapServer/WMSServer",
+		parameters: {
+			format: "image/jpeg",
+			layers: "Image_Schummerung_Oberflaechenmodell",
+			dpiMode: 7,
+		},
+		minimalLevel: 1,
+		maximalLevel: 16,
+		credit: new Cesium.Credit("OpenData Tirol"),
+        });
+
+	WMS_contours20m_Tirol = new Cesium.WebMapServiceImageryProvider({
+		url: "https://gis.tirol.gv.at/arcgis/services/Service_Public/terrain/MapServer/WMSServer",
+		parameters: {
+			format: "image/png",
+			layers: "Hoehenschichtlinien_20m",
+			dpiMode: 10,
+		},
+		minimalLevel: 1,
+		maximalLevel: 12,
+		credit: new Cesium.Credit("OpenData Tirol"),
+	});
+
+	WMS_slope_Tirol = new Cesium.WebMapServiceImageryProvider({
+		url: "https://gis.tirol.gv.at/arcgis/services/Service_Public/terrain/MapServer/WMSServer",
+		parameters: {
+			format: "image/png",
+			layers: "Image_Schummerung_Oberflaechenmodell,Image_Gelaendeneigung_Wintersport",
+			layers_opacity: "1,0.3",
+			dpiMode: 6,
+		},
+		minimalLevel: 1,
+		maximalLevel: 16,
+		credit: new Cesium.Credit("OpenData Tirol"),
+        });
+	
+	// ## Standard layer
+	WMS_hillshadeDSM_1m_Tirol_layer = viewer.imageryLayers.addImageryProvider(WMS_hillshadeDSM_1m_Tirol);
+	WMS_hillshadeDSM_1m_Tirol_layer.alpha = 1;
+	WMS_hillshadeDSM_1m_Tirol_layer.gamma = 1;
+	WMS_hillshadeDSM_1m_Tirol_layer.saturation = 1;
+	WMS_hillshadeDSM_1m_Tirol_layer.brightness = 1;
+
+	WMTS_OpenStreetMap_layer = viewer.imageryLayers.addImageryProvider(WMTS_OpenStreetMap);
+	WMTS_OpenStreetMap_layer.alpha = 0.6;
+	WMTS_OpenStreetMap_layer.contrast = 1.5;
+	WMTS_OpenStreetMap_layer.saturation = 2.5;
+	WMTS_OpenStreetMap_layer.brightness = 0.8;
+	
+	//WMS_contours20m_Tirol_layer = viewer.imageryLayers.addImageryProvider(WMS_contours20m_Tirol);
+	//WMS_contours20m_Tirol_layer.minificationFilter = Cesium.TextureMinificationFilter.NEAREST
+	//WMS_contours20m_Tirol_layer.maxificationFilter = Cesium.TextureMinificationFilter.NEAREST
+	//WMS_contours20m_Tirol_layer.alpha = 0.6;
+	//WMS_contours20m_Tirol_layer.contrast = 2;
+	//WMS_contours20m_Tirol_layer.saturation = 100;
+	//WMS_contours20m_Tirol_layer.brightness = 1;
+	//WMS_contours20m_Tirol_layer.colorToAlpha = Cesium.Color.WHITE;//new Cesium.Color(0.0, 0.0, 0.0, 1.0);
+	//WMS_contours20m_Tirol_layer.colorToAlphaThreshold = 0.12;
+	//WMS_contours20m_Tirol_layer.hue = 4.16;
+
+	//WMTS_Bergfex_layer = viewer.imageryLayers.addImageryProvider(WMTS_Bergfex);
+	//WMTS_Bergfex_layer.alpha = 0;
+
+	//WMS_slope_Tirol_layer = viewer.imageryLayers.addImageryProvider(WMS_slope_Tirol);
+	//WMS_slope_Tirol_layer.alpha = 0;
+	//WMS_slope_Tirol_layer.saturation = 1;
+  </script>
+ </div>
+</body>
+</html>
