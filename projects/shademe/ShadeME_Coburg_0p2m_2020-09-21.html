@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- Include the CesiumJS JavaScript and CSS files -->
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.88/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.88/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+</head>
+<body>
+	<div id="cesiumContainer" style="width:100%;height:100%;"></div>
+  	<script>
+  	// ### Predefinitions for Viewer ###
+  	Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJmZGNmOWNiMi0xZTBmLTQ2ZTUtYmJlMi00MmNjMWU0ODQwYjAiLCJpZCI6ODE1OTUsImlhdCI6MTY2NzQ2OTM0N30.P40bCUKo2KxFlku8elIQ57ixhCAj4EeqyEAh0_UMgns"
+	
+	// ### DEFINE VIEWER ###
+	// ## Basic Definition ##
+    const viewer = new Cesium.Viewer('cesiumContainer', {	
+      	terrainProvider: new Cesium.CesiumTerrainProvider({
+                            url: Cesium.IonResource.fromAssetId(1387372),
+                         }),//Cesium.createWorldTerrain(),
+		imageryProvider: false,
+  		homeButton: false,
+		fullscreenButton: true,
+		CreditsDisplay: true,
+		infoBox: false,
+  		geocoder: false,
+	  	sceneMode: Cesium.SceneMode.SCENE3D,
+  		sceneModePicker: false,
+  		navigationHelpButton: false,
+	  	animation: false,
+		timeline: false,
+		baseLayerPicker: false,
+		useBrowserRecommendedResolution: true,
+	});
+	viewer._cesiumWidget._creditContainer.parentNode.removeChild(
+        viewer._cesiumWidget._creditContainer
+	);
+	viewer.scene.globe.baseColor = new Cesium.Color(0.0, 101/255, 189/255, 1.0);//Cesium.Color.WHITE;
+
+    // ## Home Camera ##
+	var extent = Cesium.Rectangle.fromDegrees(10.968423-0.01,50.259085-0.01,10.968423+0.001,50.259085+0.01);
+	Cesium.Camera.DEFAULT_VIEW_RECTANGLE = extent;
+
+	viewer.camera.flyToBoundingSphere(
+		new Cesium.BoundingSphere(Cesium.Cartesian3.fromDegrees(10.968423, 50.259085, 400), 300)
+	)
+    
+    // ## Entities ##
+    var entity = viewer.entities.add({
+        label: {
+            show: false,
+            showBackground: true,
+            font: "12px sans-serif",// monospace",
+            horizontalOrigin: Cesium.HorizontalOrigin.LEFT,
+            verticalOrigin: Cesium.VerticalOrigin.TOP,
+            pixelOffset: new Cesium.Cartesian2(15, 0),
+        },
+    });
+
+    // ## Event Handlers ##
+    // # Mouse over the globe to see the cartographic position next to mouse #
+    handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+    handler.setInputAction(
+        function(movement){
+            var cartesian = viewer.camera.pickEllipsoid(
+                movement.endPosition,
+                viewer.scene.globe.ellipsoid
+            );
+            
+            if (cartesian) {
+                var cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+                var longitudeString = Cesium.Math.toDegrees(cartographic.longitude).toFixed(4);
+                var latitudeString = Cesium.Math.toDegrees(cartographic.latitude).toFixed(4);
+        
+                entity.position = cartesian;
+                entity.label.show = true;
+                entity.label.text = longitudeString+","+latitudeString
+            }
+            else {
+                entity.label.show = false;
+            }
+        },
+        Cesium.ScreenSpaceEventType.MOUSE_MOVE
+    );
+
+    // # Return Coordinates (for copying to clipboard) #
+    function getME_coordinates(e){
+        var mousePosition = Cesium.Cartesian2(e.clientX, e.clientY); // ### TODO: NOT MOUSPOSITION, IS POSITION OF LEFT UPPER CORNER SOMEHOW ###
+        var cartesian = viewer.camera.pickEllipsoid(
+            mousePosition,
+            viewer.scene.globe.ellipsoid
+        );
+        
+        if (cartesian) {
+            var cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+            var longitudeString = Cesium.Math.toDegrees(cartographic.longitude);
+            var latitudeString = Cesium.Math.toDegrees(cartographic.latitude);
+            //var message = "LonLat: "+longitudeString+","+latitudeString+"\nLatLon: "+latitudeString+","+longitudeString;
+            //alert(message);
+            prompt("Copy LonLat to clipboard:",longitudeString+","+latitudeString);
+        }
+        else{
+            alert("Zoom in to show coordinates!")
+        }  
+    };
+    
+    // # Key Event Handling #
+    document.onkeydown = function(e){
+        var keyCode = e.keyCode;
+        if(keyCode == 17) {
+            getME_coordinates(e);
+        }
+        else if(keyCode == 17){
+            alert("Hallo!");
+        }
+    };
+
+	// ### LIMIT VIEW ###
+
+	// ### DEFINE LAYERS ###
+	// ## Coburg ##
+	
+	WMS_Lightmap_Coburg = new Cesium.IonImageryProvider(
+		{assetId:1387373}
+	);	
+	// ## Standard layer
+	WMS_Lightmap_Coburg_layer = viewer.imageryLayers.addImageryProvider(WMS_Lightmap_Coburg);
+	WMS_Lightmap_Coburg_layer.alpha = 1;
+	WMS_Lightmap_Coburg_layer.gamma = 1;
+	WMS_Lightmap_Coburg_layer.contrast = 1;
+	WMS_Lightmap_Coburg_layer.saturation = 1;
+	WMS_Lightmap_Coburg_layer.brightness = 1;
+
+  </script>
+ </div>
+</body>
+</html>
