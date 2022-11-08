@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- Include the CesiumJS JavaScript and CSS files -->
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.88/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.88/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+</head>
+<body>
+	<div id="cesiumContainer" style="width:100%;height:100%;"></div>
+  	<script>
+  	// ### Predefinitions for Viewer ###
+  	Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIwNmQ2ZTQ5ZS0zMjZlLTQ2ZjMtOTMxYy02YjM3ZmQ2ZjgwMDIiLCJpZCI6ODE1OTUsImlhdCI6MTY0NDIxODI4OH0.qnvoYt8vjupU8UXaRGZeBq8OPa1Mqfb9cq-ETU1TxVI"
+  	// ## Search Engine ##
+	function OpenStreetMapNominatimGeocoder() {}
+    OpenStreetMapNominatimGeocoder.prototype.geocode = function (input) {
+  		var endpoint = "https://nominatim.openstreetmap.org/search";
+  		var resource = new Cesium.Resource({
+			url: endpoint,
+			queryParameters: {
+  				format: "json",
+  				q: input,
+			},
+  		});
+
+  		return resource.fetchJson().then(function (results) {
+			var bboxDegrees;
+			return results.map(function (resultObject) {
+  				bboxDegrees = resultObject.boundingbox;
+  				return {
+				displayName: resultObject.display_name,
+				destination: Cesium.Rectangle.fromDegrees(
+  					bboxDegrees[2],
+  					bboxDegrees[0],
+  					bboxDegrees[3],
+  					bboxDegrees[1]
+				),
+  				};
+			});
+  		});
+	};
+	
+	// ### DEFINE VIEWER ###
+	// ## Basic Definition ##
+    const viewer = new Cesium.Viewer('cesiumContainer', {	
+      	terrainProvider: new Cesium.CesiumTerrainProvider({
+                            url: Cesium.IonResource.fromAssetId(952656),
+                         }),//Cesium.createWorldTerrain(),
+		imageryProvider: false,
+  		homeButton: true,
+		fullscreenButton: true,
+		CreditsDisplay: true,
+		infoBox: false,
+  		geocoder: new OpenStreetMapNominatimGeocoder(),
+	  	sceneMode: Cesium.SceneMode.SCENE3D,
+  		sceneModePicker: true,
+  		navigationHelpButton: false,
+	  	animation: false,
+		timeline: false,
+		baseLayerPicker: false,
+		useBrowserRecommendedResolution: true,
+	});
+	viewer._cesiumWidget._creditContainer.parentNode.removeChild(
+        viewer._cesiumWidget._creditContainer
+	);
+	viewer.scene.globe.baseColor = Cesium.Color.WHITE;
+
+    // ## Terrain Exaggeration for better visibility ##
+	viewer.scene.globe.terrainExaggeration = 1;//Math.sqrt(2);
+
+    // ## Home Camera ##
+	var extent = Cesium.Rectangle.fromDegrees(10.08,46.63,12.98,47.75);
+	//var extent = Cesium.Rectangle.fromDegrees(10.93,47.35,10.94,47.36);
+	Cesium.Camera.DEFAULT_VIEW_RECTANGLE = extent;
+
+	viewer.camera.flyToBoundingSphere(
+		new Cesium.BoundingSphere(Cesium.Cartesian3.fromDegrees(10.9337, 47.3603, 1920), 1500)
+	)
+
+	// ### LIMIT VIEW ###
+    
+    //navigator.geolocation.getCurrentPosition(alert); # get position of user
+
+	// ### DEFINE LAYERS ###
+	// ## BaseMap Österreich ##
+	WMTS_basemap_orthofoto_0p3m = new Cesium.UrlTemplateImageryProvider({
+		url: "https://maps1.wien.gv.at/basemap/bmaporthofoto30cm/normal/google3857/{z}/{y}/{x}.jpeg",
+	})
+	
+	// ## SouthTyrol ##
+	WMS_Orthofoto_SouthTirol = new Cesium.WebMapServiceImageryProvider({
+		url: "https://geoservices.buergernetz.bz.it/mapproxy/p_bz-Orthoimagery/wms?",
+		parameters: {
+			format: "image/jpeg",
+			layers: "Aerial-2020-RGB",
+		},
+		minimalLevel: 1,
+		maximalLevel: 16,
+		credit: new Cesium.Credit("OpenData SouthTyrol"),
+    });
+
+	// ## Standard layer
+	WMS_Orthofoto_SouthTirol_layer = viewer.imageryLayers.addImageryProvider(WMS_Orthofoto_SouthTirol);
+	WMS_Orthofoto_SouthTirol_layer.alpha = 1;
+	WMS_Orthofoto_SouthTirol_layer.gamma = 1;
+	WMS_Orthofoto_SouthTirol_layer.saturation = 1;
+	WMS_Orthofoto_SouthTirol_layer.brightness = 1;
+	WMS_Orthofoto_SouthTirol_layer.colorToAlpha = Cesium.Color.WHITE;
+	//WMS_Orthofoto_SouthTirol_layer.colorToAlphaThreshold = 0.05;
+
+	WMTS_basemap_orthofoto_0p3m_layer = viewer.imageryLayers.addImageryProvider(WMTS_basemap_orthofoto_0p3m);
+	WMTS_basemap_orthofoto_0p3m_layer.alpha = 1;
+	WMTS_basemap_orthofoto_0p3m_layer.gamma = 1;
+	WMTS_basemap_orthofoto_0p3m_layer.saturation = 1.5;
+	WMTS_basemap_orthofoto_0p3m_layer.brightness = 1;
+	WMTS_basemap_orthofoto_0p3m_layer.colorToAlpha = Cesium.Color.WHITE;
+	WMTS_basemap_orthofoto_0p3m_layer.colorToAlphaThreshold = 0.05;	
+
+  </script>
+ </div>
+</body>
+</html>
