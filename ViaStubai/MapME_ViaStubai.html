@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>MapME</title>
+
+	<!-- Own Style -->
+	<link rel="stylesheet" href="./styles/style.css" />
+	<link rel="stylesheet" href="./styles/style_buttons.css" />
+	<link rel="stylesheet" href="./styles/style_loader.css" />
+
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+	
+	<!-- Include the CesiumJS JavaScript and CSS files -->
+	<script src="https://cesium.com/downloads/cesiumjs/releases/1.99/Build/Cesium/Cesium.js"></script>
+	<link href="https://cesium.com/downloads/cesiumjs/releases/1.99/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+	
+</head>
+<body>
+
+<div id="loadingDiv" class="loader" alt="Loader">
+	<img id="loading-image" class="loader_image" src="./files/MapME.jpg" alt="Loading..." />
+	<div id="loader_gifDiv" class="loader_gif"></div>
+</div>
+
+<div id="disclaimerDiv" class="disclaimer">
+	<div id="disclaimer_text" class="disclaimer_text" alt="Disclaimer" />
+	<h1>Welcome to MapME!</h1>
+	<p>We are working on this mapping application at the Chair of Remote Sensing Technology (LMF) at the Technical University of Munich (TUM) in our leisure time for fun.
+	Hence, you are free to use it the way you like as long as you credit us properly and help spreading the message!<br/></p>
+	<p>Please note that all information provided by this tool is experimental and we explicitely exclude any responsibility of ours for the things you are doing with it!</p>
+	<p>We are changing credentials for our datasets regularly in an irregular manner such that there is no possibility to misuse them except you have some very fancy tricks.
+	If you still should try to misuse our service, we will find out and take care of it/you!</p>
+	<p><b>Michael Engel,<br/>Chair of Remote Sensing Technology,<br/>Technical University of Munich</b></p>
+	<button id="disclaimerbutton_acceptDiv" class="button_accept">ACCEPT</button><button id="disclaimerbutton_declineDiv" class="button_decline">DECLINE</button>
+	</div>
+</div>
+
+<div id="welcomeDiv" class="welcome">
+	<div id="welcome_text" class="welcome_text" alt="Welcome"/>
+	<h1 style="text-align:center">Keep your enthusiasm!</h1>
+	<img src='./files/FaceME.jpg' style='max-width:90vmin;max-height:90vmin'/>
+	</div>
+</div>
+
+	<div id="cesiumContainer" style="width:100%;height:100%;"></div>
+  	<script>
+  	// ### Predefinitions for Viewer ###
+  	Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIwNmQ2ZTQ5ZS0zMjZlLTQ2ZjMtOTMxYy02YjM3ZmQ2ZjgwMDIiLCJpZCI6ODE1OTUsImlhdCI6MTY0NDIxODI4OH0.qnvoYt8vjupU8UXaRGZeBq8OPa1Mqfb9cq-ETU1TxVI"
+  	// ## Search Engine ##
+	function OpenStreetMapNominatimGeocoder() {}
+    OpenStreetMapNominatimGeocoder.prototype.geocode = function (input) {
+  		var endpoint = "https://nominatim.openstreetmap.org/search";
+  		var resource = new Cesium.Resource({
+			url: endpoint,
+			queryParameters: {
+  				format: "json",
+  				q: input,
+			},
+  		});
+
+  		return resource.fetchJson().then(function (results) {
+			var bboxDegrees;
+			return results.map(function (resultObject) {
+  				bboxDegrees = resultObject.boundingbox;
+  				return {
+				displayName: resultObject.display_name,
+				destination: Cesium.Rectangle.fromDegrees(
+  					bboxDegrees[2],
+  					bboxDegrees[0],
+  					bboxDegrees[3],
+  					bboxDegrees[1]
+				),
+  				};
+			});
+  		});
+	};
+	
+	// ### DEFINE VIEWER ###
+	// ## Basic Definition ##
+    const viewer = new Cesium.Viewer('cesiumContainer', {	
+      	terrainProvider: new Cesium.CesiumTerrainProvider({
+                            url: Cesium.IonResource.fromAssetId(952656),
+                         }),//Cesium.createWorldTerrain(),
+		imageryProvider: false,
+  		homeButton: true,
+		fullscreenButton: true,
+		CreditsDisplay: true,
+		infoBox: false,
+  		geocoder: new OpenStreetMapNominatimGeocoder(),
+	  	sceneMode: Cesium.SceneMode.SCENE3D,
+  		sceneModePicker: true,
+  		navigationHelpButton: false,
+	  	animation: false,
+		timeline: false,
+		baseLayerPicker: false,
+		useBrowserRecommendedResolution: false,
+	});
+	viewer._cesiumWidget._creditContainer.parentNode.removeChild(
+        viewer._cesiumWidget._creditContainer
+	);
+	viewer.scene.globe.baseColor = Cesium.Color.WHITE;
+
+    // ## Terrain Exaggeration for better visibility ##
+	viewer.scene.globe.terrainExaggeration = 1;//Math.sqrt(2);
+
+    // ## Home Camera ##
+	var extent = Cesium.Rectangle.fromDegrees(10.08,46.63,12.98,47.75);
+	Cesium.Camera.DEFAULT_VIEW_RECTANGLE = extent;
+
+	// ### LIMIT VIEW ###
+    
+    //navigator.geolocation.getCurrentPosition(alert); # get position of user
+
+	// ### DEFINE LAYERS ###
+	// ## BaseMap Österreich ##
+	WMTS_basemap_orthofoto_0p3m = new Cesium.UrlTemplateImageryProvider({
+		url: "https://maps1.wien.gv.at/basemap/bmaporthofoto30cm/normal/google3857/{z}/{y}/{x}.jpeg",
+	})
+	
+	// ## SouthTyrol ##
+	WMS_Orthofoto_SouthTirol = new Cesium.WebMapServiceImageryProvider({
+		url: "https://geoservices.buergernetz.bz.it/mapproxy/p_bz-Orthoimagery/wms?",
+		parameters: {
+			format: "image/jpeg",
+			layers: "Aerial-2020-RGB",
+		},
+		minimalLevel: 1,
+		maximalLevel: 16,
+		credit: new Cesium.Credit("OpenData SouthTyrol"),
+    });
+
+	// ## Standard layer
+	WMS_Orthofoto_SouthTirol_layer = viewer.imageryLayers.addImageryProvider(WMS_Orthofoto_SouthTirol);
+	WMS_Orthofoto_SouthTirol_layer.alpha = 1;
+	WMS_Orthofoto_SouthTirol_layer.gamma = 1;
+	WMS_Orthofoto_SouthTirol_layer.saturation = 1;
+	WMS_Orthofoto_SouthTirol_layer.brightness = 1;
+	WMS_Orthofoto_SouthTirol_layer.colorToAlpha = Cesium.Color.WHITE;
+	//WMS_Orthofoto_SouthTirol_layer.colorToAlphaThreshold = 0.05;
+
+	WMTS_basemap_orthofoto_0p3m_layer = viewer.imageryLayers.addImageryProvider(WMTS_basemap_orthofoto_0p3m);
+	WMTS_basemap_orthofoto_0p3m_layer.alpha = 1;
+	WMTS_basemap_orthofoto_0p3m_layer.gamma = 1;
+	WMTS_basemap_orthofoto_0p3m_layer.saturation = 1.5;
+	WMTS_basemap_orthofoto_0p3m_layer.brightness = 1;
+	WMTS_basemap_orthofoto_0p3m_layer.colorToAlpha = Cesium.Color.WHITE;
+	WMTS_basemap_orthofoto_0p3m_layer.colorToAlphaThreshold = 0.05;	
+
+	// ## ViaStubai ##
+	// # Track #
+	viewer.dataSources.add(
+		Cesium.GpxDataSource.load(
+			"ViaStubai.gpx",
+			{
+				clampToGround: true,
+				trackColor: Cesium.Color.RED,
+				waypointImage: false,
+			}
+		)
+	).then(
+		function (dataSource) {
+            viewer.flyTo(dataSource.entities);
+        }
+	);
+
+	// # Cabins #
+	const pinBuilder = new Cesium.PinBuilder();
+
+	const cabinPin_01 = viewer.entities.add({
+		name: "Adolf-Pichler Hütte",
+		position: Cesium.Cartesian3.fromDegrees(11.267986829447773, 47.16669617205776),
+		billboard: {
+			image: pinBuilder.fromUrl(
+				"https://upload.wikimedia.org/wikipedia/commons/3/34/Home-icon.svg",
+				new Cesium.Color(0,101/255,189/255,1),
+				48
+			),
+			verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+			heightReference : Cesium.HeightReference.CLAMP_TO_GROUND,
+		},
+	});
+	const cabinPin_02 = viewer.entities.add({
+		name: "Franz-Senn Hütte",
+		position: Cesium.Cartesian3.fromDegrees(11.168570573717844, 47.08508989279148),
+		billboard: {
+			image: pinBuilder.fromUrl(
+				"https://upload.wikimedia.org/wikipedia/commons/3/34/Home-icon.svg",
+				new Cesium.Color(0,101/255,189/255,1),
+				48
+			),
+			verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+			heightReference : Cesium.HeightReference.CLAMP_TO_GROUND,
+		},
+	});
+	const cabinPin_03 = viewer.entities.add({
+		name: "Neue Regensburger Hütte",
+		position: Cesium.Cartesian3.fromDegrees(11.198297571587034, 47.054708550064845),
+		billboard: {
+			image: pinBuilder.fromUrl(
+				"https://upload.wikimedia.org/wikipedia/commons/3/34/Home-icon.svg",
+				new Cesium.Color(0,101/255,189/255,1),
+				48
+			),
+			verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+			heightReference : Cesium.HeightReference.CLAMP_TO_GROUND,
+		},
+	});
+	const cabinPin_04 = viewer.entities.add({
+		name: "Dresdner Hütte",
+		position: Cesium.Cartesian3.fromDegrees(11.139513972922419, 46.998054121337326),
+		billboard: {
+			image: pinBuilder.fromUrl(
+				"https://upload.wikimedia.org/wikipedia/commons/3/34/Home-icon.svg",
+				new Cesium.Color(0,101/255,189/255,1),
+				48
+			),
+			verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+			heightReference : Cesium.HeightReference.CLAMP_TO_GROUND,
+		},
+	});
+	const cabinPin_05 = viewer.entities.add({
+		name: "Nürnberger Hütte",
+		position: Cesium.Cartesian3.fromDegrees(11.217886808960632, 46.993704500569635),
+		billboard: {
+			image: pinBuilder.fromUrl(
+				"https://upload.wikimedia.org/wikipedia/commons/3/34/Home-icon.svg",
+				new Cesium.Color(0,101/255,189/255,1),
+				48
+			),
+			verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+			heightReference : Cesium.HeightReference.CLAMP_TO_GROUND,
+		},
+	});
+	const cabinPin_06 = viewer.entities.add({
+		name: "Teplitzer Hütte",
+		position: Cesium.Cartesian3.fromDegrees(11.2274, 46.955517),
+		billboard: {
+			image: pinBuilder.fromUrl(
+				"https://upload.wikimedia.org/wikipedia/commons/3/34/Home-icon.svg",
+				new Cesium.Color(0,101/255,189/255,1),
+				48
+			),
+			verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+			heightReference : Cesium.HeightReference.CLAMP_TO_GROUND,
+		},
+	});
+	const cabinPin_07 = viewer.entities.add({
+		name: "Schutzhütte Schneeberg",
+		position: Cesium.Cartesian3.fromDegrees(11.181514780685063, 46.898996374951764),
+		billboard: {
+			image: pinBuilder.fromUrl(
+				"https://upload.wikimedia.org/wikipedia/commons/3/34/Home-icon.svg",
+				new Cesium.Color(0,101/255,189/255,1),
+				48
+			),
+			verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+			heightReference : Cesium.HeightReference.CLAMP_TO_GROUND,
+		},
+	});
+	const cabinPin_08 = viewer.entities.add({
+		name: "Schutzhütte Hochalm",
+		position: Cesium.Cartesian3.fromDegrees(11.190196839317004, 46.8457675637261),
+		billboard: {
+			image: pinBuilder.fromUrl(
+				"https://upload.wikimedia.org/wikipedia/commons/3/34/Home-icon.svg",
+				new Cesium.Color(0,101/255,189/255,1),
+				48
+			),
+			verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+			heightReference : Cesium.HeightReference.CLAMP_TO_GROUND,
+		},
+	});
+
+	viewer.scene.globe.depthTestAgainstTerrain = true;
+
+	
+//#############################################################################
+//### BUTTONS #################################################################
+//#############################################################################	
+$(disclaimerbutton_acceptDiv).on('click', function(){
+    removeDiv($("#disclaimerDiv"));
+    showDiv($("#welcomeDiv"));
+    setTimeout(removeWelcome,2000);
+});
+function removeWelcome(){
+    removeDiv($("#welcomeDiv"))
+}
+
+$(disclaimerbutton_declineDiv).on('click', function(){
+    hideDiv($("#cesiumContainer"));
+    removeDiv($("#welcomeDiv"));
+    removeDiv($("#disclaimerDiv"));
+    removeDiv($("#cesiumContainer"));
+});
+
+//#############################################################################
+//### LOADER ##################################################################
+//#############################################################################
+$(window).on('load', function(){
+    setTimeout(removeLoader, 2500);
+});
+function removeLoader(){
+    hideDiv($("#welcomeDiv"))
+    removeDiv($("#loadingDiv"))
+}
+
+//#############################################################################
+//### UTILS ###################################################################
+//#############################################################################
+function removeDiv(Div){
+    Div.fadeOut(500, function() {
+        Div.remove();
+    });  
+}
+function showDiv(Div){
+    Div.show()
+}
+function hideDiv(Div){
+    Div.hide()
+}
+  </script>
+ </div>
+</body>
+</html>
