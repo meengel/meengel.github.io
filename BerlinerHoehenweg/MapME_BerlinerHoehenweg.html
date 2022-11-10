@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 	<meta charset="utf-8">
-	<title>MapME - Alpenüberquerung Via Stubai</title>
+	<title>MapME - Berliner Höhenweg</title>
 
 	<!-- Own Style -->
 	<link rel="stylesheet" href="./styles/style.css" />
@@ -151,7 +151,7 @@
 	// # Track #
 	viewer.dataSources.add(
 		Cesium.GpxDataSource.load(
-			"ViaStubai.gpx",
+			"BerlinerHoehenweg.gpx",
 			{
 				clampToGround: true,
 				trackColor: Cesium.Color.RED,
@@ -168,8 +168,8 @@
 	const pinBuilder = new Cesium.PinBuilder();
 
 	const cabinPin_01 = viewer.entities.add({
-		name: "Adolf-Pichler Hütte",
-		position: Cesium.Cartesian3.fromDegrees(11.267986829447773, 47.16669617205776),
+		name: "Edelhütte",
+		position: Cesium.Cartesian3.fromDegrees(11.897478, 47.130515),
 		billboard: {
 			image: pinBuilder.fromUrl(
 				"https://upload.wikimedia.org/wikipedia/commons/3/34/Home-icon.svg",
@@ -181,8 +181,8 @@
 		},
 	});
 	const cabinPin_02 = viewer.entities.add({
-		name: "Franz-Senn Hütte",
-		position: Cesium.Cartesian3.fromDegrees(11.168570573717844, 47.08508989279148),
+		name: "Kasseler Hütte",
+		position: Cesium.Cartesian3.fromDegrees(11.948611, 47.059420),
 		billboard: {
 			image: pinBuilder.fromUrl(
 				"https://upload.wikimedia.org/wikipedia/commons/3/34/Home-icon.svg",
@@ -194,8 +194,8 @@
 		},
 	});
 	const cabinPin_03 = viewer.entities.add({
-		name: "Neue Regensburger Hütte",
-		position: Cesium.Cartesian3.fromDegrees(11.198297571587034, 47.054708550064845),
+		name: "Greizer Hütte",
+		position: Cesium.Cartesian3.fromDegrees(11.885706, 47.043344),
 		billboard: {
 			image: pinBuilder.fromUrl(
 				"https://upload.wikimedia.org/wikipedia/commons/3/34/Home-icon.svg",
@@ -207,8 +207,8 @@
 		},
 	});
 	const cabinPin_04 = viewer.entities.add({
-		name: "Dresdner Hütte",
-		position: Cesium.Cartesian3.fromDegrees(11.139513972922419, 46.998054121337326),
+		name: "Berliner Hütte",
+		position: Cesium.Cartesian3.fromDegrees(11.812904, 47.024525),
 		billboard: {
 			image: pinBuilder.fromUrl(
 				"https://upload.wikimedia.org/wikipedia/commons/3/34/Home-icon.svg",
@@ -220,47 +220,8 @@
 		},
 	});
 	const cabinPin_05 = viewer.entities.add({
-		name: "Nürnberger Hütte",
-		position: Cesium.Cartesian3.fromDegrees(11.217886808960632, 46.993704500569635),
-		billboard: {
-			image: pinBuilder.fromUrl(
-				"https://upload.wikimedia.org/wikipedia/commons/3/34/Home-icon.svg",
-				new Cesium.Color(0,101/255,189/255,1),
-				48
-			),
-			verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-			heightReference : Cesium.HeightReference.CLAMP_TO_GROUND,
-		},
-	});
-	const cabinPin_06 = viewer.entities.add({
-		name: "Teplitzer Hütte",
-		position: Cesium.Cartesian3.fromDegrees(11.2274, 46.955517),
-		billboard: {
-			image: pinBuilder.fromUrl(
-				"https://upload.wikimedia.org/wikipedia/commons/3/34/Home-icon.svg",
-				new Cesium.Color(0,101/255,189/255,1),
-				48
-			),
-			verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-			heightReference : Cesium.HeightReference.CLAMP_TO_GROUND,
-		},
-	});
-	const cabinPin_07 = viewer.entities.add({
-		name: "Schutzhütte Schneeberg",
-		position: Cesium.Cartesian3.fromDegrees(11.181514780685063, 46.898996374951764),
-		billboard: {
-			image: pinBuilder.fromUrl(
-				"https://upload.wikimedia.org/wikipedia/commons/3/34/Home-icon.svg",
-				new Cesium.Color(0,101/255,189/255,1),
-				48
-			),
-			verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-			heightReference : Cesium.HeightReference.CLAMP_TO_GROUND,
-		},
-	});
-	const cabinPin_08 = viewer.entities.add({
-		name: "Schutzhütte Hochalm",
-		position: Cesium.Cartesian3.fromDegrees(11.190196839317004, 46.8457675637261),
+		name: "Furtschaglhaus",
+		position: Cesium.Cartesian3.fromDegrees(11.747331, 47.000996),
 		billboard: {
 			image: pinBuilder.fromUrl(
 				"https://upload.wikimedia.org/wikipedia/commons/3/34/Home-icon.svg",
