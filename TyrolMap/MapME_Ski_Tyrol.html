@@ -43,10 +43,37 @@
 	</div>
 </div>
 
-	<div id="cesiumContainer" style="width:100%;height:100%;"></div>
-  	<script>
+<div id="cesiumContainer" style="width:100%;height:100%;"></div>
+<script>
   	// ### Predefinitions for Viewer ###
   	Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIwNmQ2ZTQ5ZS0zMjZlLTQ2ZjMtOTMxYy02YjM3ZmQ2ZjgwMDIiLCJpZCI6ODE1OTUsImlhdCI6MTY0NDIxODI4OH0.qnvoYt8vjupU8UXaRGZeBq8OPa1Mqfb9cq-ETU1TxVI"
+
+	// ## Parse URL ##
+    const baseurl = (' '+document.URL.split("?")[0]).slice(1);
+    const queryString = window.location.search;
+	var urlParams = new URLSearchParams(queryString);
+	urlParams.forEach(console.log)
+	var camera_x = urlParams.get('lon')
+	if (!camera_x) {
+		camera_x = 10.9337
+	}
+	var camera_y = urlParams.get('lat')
+	if (!camera_y) {
+		camera_y = 47.23 // 47.3603
+	}
+	var camera_z = urlParams.get('z')
+	if (!camera_z) {
+		camera_z = 16000
+	}
+	var camera_heading = urlParams.get('heading')
+	if (!camera_heading) {
+		camera_heading = 360
+	}
+	var camera_pitch = urlParams.get('pitch')
+	if (!camera_pitch) {
+		camera_pitch = -45
+	}
+
   	// ## Search Engine ##
 	function OpenStreetMapNominatimGeocoder() {}
     OpenStreetMapNominatimGeocoder.prototype.geocode = function (input) {
@@ -104,19 +131,33 @@
     // ## Terrain Exaggeration for better visibility ##
 	viewer.scene.globe.terrainExaggeration = 1;//Math.sqrt(2);
 
-    // ## Home Camera ##
+    // ## Camera ##
+	// # home #
 	var extent = Cesium.Rectangle.fromDegrees(10.08,46.63,12.98,47.75);
 	Cesium.Camera.DEFAULT_VIEW_RECTANGLE = extent;
 
-	viewer.camera.flyToBoundingSphere(
-		new Cesium.BoundingSphere(Cesium.Cartesian3.fromDegrees(10.9337, 47.3603, 1920), 5500)
-	)
+	// # start #
+	viewer.camera.flyTo({
+		destination: Cesium.Cartesian3.fromDegrees(camera_x, camera_y, camera_z),
+		orientation: {
+			heading: Cesium.Math.toRadians(camera_heading),
+			pitch: Cesium.Math.toRadians(camera_pitch),
+			roll: 0.0,
+    	},
+	});
+
+	// # Camera Position URL #
+	viewer.camera.moveEnd.addEventListener(function() { 
+		var lonlatz = Cesium.Cartographic.fromCartesian(viewer.camera.position);
+		newurl = baseurl+`?lon=${Cesium.Math.toDegrees(lonlatz.longitude)}&lat=${Cesium.Math.toDegrees(lonlatz.latitude)}&z=${lonlatz.height}&heading=${Cesium.Math.toDegrees(viewer.camera.heading)}&pitch=${Cesium.Math.toDegrees(viewer.camera.pitch)}`
+		window.history.replaceState('', '', newurl);
+	});
 
 	// ### LIMIT VIEW ###
     
     //navigator.geolocation.getCurrentPosition(alert); # get position of user
 
-		// ### DEFINE LAYERS ###
+	// ### DEFINE LAYERS ###
 	// ## Baselayer ##
 	WMTS_OpenStreetMap = new Cesium.OpenStreetMapImageryProvider({
 		url : 'https://a.tile.openstreetmap.org/',
@@ -199,14 +240,14 @@
 	WMS_slope_Tirol_layer.colorToAlpha = Cesium.Color.WHITE;
 	WMS_slope_Tirol_layer.colorToAlphaThreshold = 0.04;
 
-	// ## SkitourenguruTracks ##
-	// # pad fun #
+	// ### SkitourenguruTracks ###
+	// ## pad fun ##
 	function pad(num, size) {
 		num = num.toString();
 		while (num.length < size) num = "0" + num;
 		return num;
 	}
-	// # add tracks #
+	// ## add tracks ##
 	for (let i=1; i<999; i++) {
 		gpx = Cesium.GpxDataSource.load(
 			`https://skitourenguru.ch/calc_data2/gpx/Austria_ID${pad(i,6)}.gpx`,
@@ -226,9 +267,9 @@
 		)
 	}
 
-	// # add handler for visiting Skitourenguru #
-	handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
-	handler.setInputAction(
+	// ## add handler for visiting Skitourenguru ##
+	handler_skitourenguru = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+	handler_skitourenguru.setInputAction(
 		function(click) {
 			let feature = viewer.scene.pick(click.position);
 			if (Cesium.defined(feature)) {
@@ -244,52 +285,52 @@
 		}, 
 		Cesium.ScreenSpaceEventType.LEFT_CLICK 
 	);
-	
-//#############################################################################
-//### BUTTONS #################################################################
-//#############################################################################	
-$(disclaimerbutton_acceptDiv).on('click', function(){
-    removeDiv($("#disclaimerDiv"));
-    showDiv($("#welcomeDiv"));
-    setTimeout(removeWelcome,2000);
-});
-function removeWelcome(){
-    removeDiv($("#welcomeDiv"))
-}
 
-$(disclaimerbutton_declineDiv).on('click', function(){
-    hideDiv($("#cesiumContainer"));
-    removeDiv($("#welcomeDiv"));
-    removeDiv($("#disclaimerDiv"));
-    removeDiv($("#cesiumContainer"));
-});
+	//#############################################################################
+	//### BUTTONS #################################################################
+	//#############################################################################	
+	$(disclaimerbutton_acceptDiv).on('click', function(){
+		removeDiv($("#disclaimerDiv"));
+		showDiv($("#welcomeDiv"));
+		setTimeout(removeWelcome,2000);
+	});
+	function removeWelcome(){
+		removeDiv($("#welcomeDiv"))
+	}
 
-//#############################################################################
-//### LOADER ##################################################################
-//#############################################################################
-$(window).on('load', function(){
-    setTimeout(removeLoader, 2500);
-});
-function removeLoader(){
-    hideDiv($("#welcomeDiv"))
-    removeDiv($("#loadingDiv"))
-}
+	$(disclaimerbutton_declineDiv).on('click', function(){
+		hideDiv($("#cesiumContainer"));
+		removeDiv($("#welcomeDiv"));
+		removeDiv($("#disclaimerDiv"));
+		removeDiv($("#cesiumContainer"));
+	});
 
-//#############################################################################
-//### UTILS ###################################################################
-//#############################################################################
-function removeDiv(Div){
-    Div.fadeOut(500, function() {
-        Div.remove();
-    });  
-}
-function showDiv(Div){
-    Div.show()
-}
-function hideDiv(Div){
-    Div.hide()
-}
-  </script>
- </div>
+	//#############################################################################
+	//### LOADER ##################################################################
+	//#############################################################################
+	$(window).on('load', function(){
+		setTimeout(removeLoader, 2500);
+	});
+	function removeLoader(){
+		hideDiv($("#welcomeDiv"))
+		removeDiv($("#loadingDiv"))
+	}
+
+	//#############################################################################
+	//### UTILS ###################################################################
+	//#############################################################################
+	function removeDiv(Div){
+		Div.fadeOut(500, function() {
+			Div.remove();
+		});  
+	}
+	function showDiv(Div){
+		Div.show()
+	}
+	function hideDiv(Div){
+		Div.hide()
+	}
+</script>
+</div>
 </body>
 </html>
