@@ -199,6 +199,51 @@
 	WMS_slope_Tirol_layer.colorToAlpha = Cesium.Color.WHITE;
 	WMS_slope_Tirol_layer.colorToAlphaThreshold = 0.04;
 
+	// ## SkitourenguruTracks ##
+	// # pad fun #
+	function pad(num, size) {
+		num = num.toString();
+		while (num.length < size) num = "0" + num;
+		return num;
+	}
+	// # add tracks #
+	for (let i=1; i<999; i++) {
+		gpx = Cesium.GpxDataSource.load(
+			`https://skitourenguru.ch/calc_data2/gpx/Austria_ID${pad(i,6)}.gpx`,
+			{
+				clampToGround: true,
+				routeColor: Cesium.Color.CYAN,
+				trackColor: Cesium.Color.CYAN,
+				waypointImage: false,
+			}
+		)
+
+		entity = viewer.dataSources.add(gpx)
+		.then(
+			function(dataSource) {
+				dataSource.entities._entities._array[0]._name = `https://skitourenguru.ch/track-view?area=au&id=${i}`;
+			}
+		)
+	}
+
+	// # add handler for visiting Skitourenguru #
+	handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+	handler.setInputAction(
+		function(click) {
+			let feature = viewer.scene.pick(click.position);
+			if (Cesium.defined(feature)) {
+				var answer = confirm(`Leave this page to ${feature.id._name}?`);
+				if (answer) {
+					console.log('Visiting '+feature.id._name);
+					window.open(feature.id._name);
+				}
+				else {
+					alert ("Please consider visiting skitourenguru.ch!");
+				}
+			}
+		}, 
+		Cesium.ScreenSpaceEventType.LEFT_CLICK 
+	);
 	
 //#############################################################################
 //### BUTTONS #################################################################
