@@ -45,7 +45,9 @@
 
 <div id="cesiumContainer" style="width:100%;height:100%;"></div>
 <script>
-  	// ### Predefinitions for Viewer ###
+  	//#############################################################################
+	//### Predefinitions ##########################################################
+	//#############################################################################
   	Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIwNmQ2ZTQ5ZS0zMjZlLTQ2ZjMtOTMxYy02YjM3ZmQ2ZjgwMDIiLCJpZCI6ODE1OTUsImlhdCI6MTY0NDIxODI4OH0.qnvoYt8vjupU8UXaRGZeBq8OPa1Mqfb9cq-ETU1TxVI"
 
 	// ## Parse URL ##
@@ -103,7 +105,9 @@
   		});
 	};
 	
-	// ### DEFINE VIEWER ###
+	//#############################################################################
+	//### DEFINE VIEWER ###########################################################
+	//#############################################################################
 	// ## Basic Definition ##
     const viewer = new Cesium.Viewer('cesiumContainer', {	
       	terrainProvider: new Cesium.CesiumTerrainProvider({
@@ -123,16 +127,31 @@
 		baseLayerPicker: false,
 		useBrowserRecommendedResolution: false,
 		shadows: false,
+		selectionIndicator: false,
 	});
 	viewer._cesiumWidget._creditContainer.parentNode.removeChild(
         viewer._cesiumWidget._creditContainer
 	);
-	viewer.scene.globe.baseColor = Cesium.Color.WHITE;
+	viewer.scene.globe.baseColor = Cesium.Color.WHITE.withAlpha(0.3);
+	viewer.scene.globe.depthTestAgainstTerrain = true; // important as to https://github.com/CesiumGS/cesium/issues/8179
 
     // ## Terrain Exaggeration for better visibility ##
 	viewer.scene.globe.terrainExaggeration = 1;//Math.sqrt(2);
 
-    // ## Camera ##
+	//#############################################################################
+	//### GEOMETRY ################################################################
+	//#############################################################################
+	let track;
+	var geometry = urlParams.get("geometry")
+	if (!geometry) {
+		console.log("No geometry given!")
+	} else {
+		track = drawShape(JSON.parse(geometry))
+	}
+
+    //#############################################################################
+	//### CAMERA ##################################################################
+	//#############################################################################
 	// # home #
 	var extent = Cesium.Rectangle.fromDegrees(10.08,46.63,12.98,47.75);
 	Cesium.Camera.DEFAULT_VIEW_RECTANGLE = extent;
@@ -151,6 +170,9 @@
 	viewer.camera.moveEnd.addEventListener(function() { 
 		var lonlatz = Cesium.Cartographic.fromCartesian(viewer.camera.position);
 		newurl = baseurl+`?lon=${Cesium.Math.toDegrees(lonlatz.longitude)}&lat=${Cesium.Math.toDegrees(lonlatz.latitude)}&z=${lonlatz.height}&heading=${Cesium.Math.toDegrees(viewer.camera.heading)}&pitch=${Cesium.Math.toDegrees(viewer.camera.pitch)}`
+		if (Cesium.defined(track)) {
+			newurl = newurl+`&geometry=${JSON.stringify(track.polyline.positions._value)}`
+		}
 		window.history.replaceState('', '', newurl);
 	});
 
@@ -158,15 +180,12 @@
     
     //navigator.geolocation.getCurrentPosition(alert); # get position of user
 
-	// ### DEFINE LAYERS ###
+	//#############################################################################
+	//### DEFINE LAYERS ###########################################################
+	//#############################################################################
 	// ## Baselayer ##
 	WMTS_OpenStreetMap = new Cesium.OpenStreetMapImageryProvider({
 		url : 'https://a.tile.openstreetmap.org/',
-    });
-	// ## Bergfex ##
-	WMTS_Bergfex = new Cesium.OpenStreetMapImageryProvider({
-		url : 'http://maps.bergfex.at/osm/standard/',
-		fileExtension : "jpg",
     });
 
 	// ## Tyrol ##
@@ -181,18 +200,6 @@
 		maximalLevel: 16,
 		credit: new Cesium.Credit("OpenData Tirol"),
         });
-
-	WMS_contours20m_Tirol = new Cesium.WebMapServiceImageryProvider({
-		url: "https://gis.tirol.gv.at/arcgis/services/Service_Public/terrain/MapServer/WMSServer",
-		parameters: {
-			format: "image/png",
-			layers: "Hoehenschichtlinien_20m",
-			dpiMode: 3,
-		},
-		minimalLevel: 1,
-		maximalLevel: 16,
-		credit: new Cesium.Credit("OpenData Tirol"),
-	});
 
 	WMS_slope_Tirol = new Cesium.WebMapServiceImageryProvider({
 		url: "https://gis.tirol.gv.at/arcgis/services/Service_Public/terrain/MapServer/WMSServer",
@@ -220,20 +227,6 @@
 	WMTS_OpenStreetMap_layer.saturation = 2.5;
 	//WMTS_OpenStreetMap_layer.hue = 210/360;
 	WMTS_OpenStreetMap_layer.brightness = 0.8;
-	
-	//WMS_contours20m_Tirol_layer = viewer.imageryLayers.addImageryProvider(WMS_contours20m_Tirol);
-	//WMS_contours20m_Tirol_layer.minificationFilter = Cesium.TextureMinificationFilter.NEAREST
-	//WMS_contours20m_Tirol_layer.maxificationFilter = Cesium.TextureMinificationFilter.NEAREST
-	//WMS_contours20m_Tirol_layer.alpha = 0.6;
-	//WMS_contours20m_Tirol_layer.contrast = 2;
-	//WMS_contours20m_Tirol_layer.saturation = 100;
-	//WMS_contours20m_Tirol_layer.brightness = 1;
-	//WMS_contours20m_Tirol_layer.colorToAlpha = Cesium.Color.WHITE;//new Cesium.Color(0.0, 0.0, 0.0, 1.0);
-	//WMS_contours20m_Tirol_layer.colorToAlphaThreshold = 0.12;
-	//WMS_contours20m_Tirol_layer.hue = 210/360;
-
-	//WMTS_Bergfex_layer = viewer.imageryLayers.addImageryProvider(WMTS_Bergfex);
-	//WMTS_Bergfex_layer.alpha = 0;
 
 	WMS_slope_Tirol_layer = viewer.imageryLayers.addImageryProvider(WMS_slope_Tirol);
 	WMS_slope_Tirol_layer.alpha = 0.33;
@@ -241,7 +234,9 @@
 	WMS_slope_Tirol_layer.colorToAlpha = Cesium.Color.WHITE;
 	WMS_slope_Tirol_layer.colorToAlphaThreshold = 0.04;
 
-	// ### SkitourenguruTracks ###
+	//#############################################################################
+	//### Skitourenguru tracks ####################################################
+	//#############################################################################
 	// ## pad fun ##
 	function pad(num, size) {
 		num = num.toString();
@@ -274,17 +269,206 @@
 		function(click) {
 			let feature = viewer.scene.pick(click.position);
 			if (Cesium.defined(feature)) {
-				var answer = confirm(`Leave this page to ${feature.id._name}?`);
-				if (answer) {
-					console.log('Visiting '+feature.id._name);
-					window.open(feature.id._name);
-				}
-				else {
-					alert ("Please consider visiting skitourenguru.ch!");
+				if (Cesium.defined(feature.id._name)) {
+					var answer = confirm(`Leave this page to ${feature.id._name}?`);
+					if (answer) {
+						console.log('Visiting '+feature.id._name);
+						window.open(feature.id._name);
+					}
+					else {
+						alert ("Please consider visiting skitourenguru.ch!");
+					}
 				}
 			}
 		}, 
 		Cesium.ScreenSpaceEventType.LEFT_CLICK 
+	);
+
+	//#############################################################################
+	//### draw tracks #############################################################
+	//#############################################################################
+	// CHECK OUT https://cesium.com/blog/2016/03/21/drawing-on-the-globe-and-3d-models
+	
+	// ## checks ##
+	if (!viewer.scene.pickPositionSupported) {
+		alert("This browser does not support pickPosition.");
+	}
+	if (!Cesium.Entity.supportsPolylinesOnTerrain(viewer.scene)) {
+		alert(
+			"This browser does not support polylines on terrain."
+		);
+	}
+
+	// ## predefinitions ##
+	let drawingMode = false;
+
+	let activeShapePoints = [];
+	let activeShape;
+	let floatingPoint;
+	// let track; // -> move to start for URL parsing
+
+	viewer.cesiumWidget.screenSpaceEventHandler.removeInputAction(
+		Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK
+	);
+
+	// ## funs ##
+	// # create point entity
+	function createPoint(worldPosition, show=false) {
+		const point = viewer.entities.add({
+			position: worldPosition,
+			point: {
+				color: Cesium.Color.WHITE,
+				pixelSize: 10,
+				heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+			},
+			show: show,
+		});
+		return point;
+	}
+
+	// # draw geometry #
+	function drawShape(positionData) {
+		let shape;
+		shape = viewer.entities.add({
+			polyline: {
+				positions: positionData,
+				clampToGround: true,
+				width: 3,
+				material: new Cesium.ColorMaterialProperty(
+					Cesium.Color.fromBytes(192, 0, 0, 255)
+				),
+			},
+		});
+		return shape;
+	}
+
+	// # redraw geometry # -> so it's not dynamic and the dynamic geometry is removed.
+	function terminateShape() {
+		activeShapePoints.pop();
+		track = drawShape(activeShapePoints);
+		viewer.entities.remove(floatingPoint);
+		viewer.entities.remove(activeShape);
+		floatingPoint = undefined;
+		activeShape = undefined;
+		activeShapePoints = [];
+		return track
+	}
+
+	// # download data #
+	function save(filename, data) {
+		const blob = new Blob([data], {type: 'text/csv'});
+		if(window.navigator.msSaveOrOpenBlob) {
+			window.navigator.msSaveBlob(blob, filename);
+		}
+		else{
+			const elem = window.document.createElement('a');
+			elem.href = window.URL.createObjectURL(blob);
+			elem.download = filename;        
+			document.body.appendChild(elem);
+			elem.click();        
+			document.body.removeChild(elem);
+		}
+	}
+
+	// ## handler ##
+	// # handle LEFT_CLICK #
+	const handler = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
+	handler.setInputAction(
+		function (event) {
+			if (drawingMode){
+				const earthPosition = viewer.scene.pickPosition(event.position);
+				if (Cesium.defined(earthPosition)) {
+					if (activeShapePoints.length === 0) {
+						viewer.entities.remove(track);
+						floatingPoint = createPoint(earthPosition, true);
+						activeShapePoints.push(earthPosition);
+						const dynamicPositions = new Cesium.CallbackProperty(
+							function () {
+								return activeShapePoints;
+							},
+							false
+						);
+					activeShape = drawShape(dynamicPositions);
+					}
+					activeShapePoints.push(earthPosition);
+				}
+			}
+		},
+		Cesium.ScreenSpaceEventType.LEFT_CLICK
+	);
+
+	// # handle MOUSE_MOVE #
+	handler.setInputAction(
+		function (event) {
+			if (drawingMode){
+				if (Cesium.defined(floatingPoint)) {
+					const newPosition = viewer.scene.pickPosition(event.endPosition);
+					if (Cesium.defined(newPosition)) {
+						floatingPoint.position.setValue(newPosition);
+						activeShapePoints.pop();
+						activeShapePoints.push(newPosition);
+					}
+				}
+			}
+		},
+		Cesium.ScreenSpaceEventType.MOUSE_MOVE
+	);
+
+	// # handle RIGHT_CLICK #
+	handler.setInputAction(function (event) {
+		if (drawingMode){
+			track = terminateShape();
+			// TODO: reset url
+		}
+	}, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
+
+	//viewer.addToolbarMenu(options);
+
+	// ## draw buttons ##
+	const toolbar = document.querySelector("div.cesium-viewer-toolbar");
+	const modeButton = document.querySelector("span.cesium-sceneModePicker-wrapper");
+	const helpButton = document.querySelector("span.cesium-navigationHelpButton-wrapper");
+
+	// # drawing mode button #
+	const drawButton = document.createElement("button");
+	drawButton.classList.add("cesium-button", "cesium-toolbar-button");
+	drawButton.innerHTML = "<img src='./files/Icon_Draw_off.svg' style='max-width:1.8vmin;max-height:1.8vmin'/>";
+	toolbar.insertBefore(drawButton, helpButton);
+	$(drawButton).on(
+		"click",
+		function(){
+			if (drawingMode === false){
+				drawingMode = true;
+				console.log("Drawing enabled!")
+				drawButton.innerHTML = "<img src='./files/Icon_Draw_on.svg' style='max-width:1.8vmin;max-height:1.8vmin'/>";
+			} else {
+				drawingMode = false;
+				console.log("Drawing disabled!")
+				drawButton.innerHTML = "<img src='./files/Icon_Draw_off.svg' style='max-width:1.8vmin;max-height:1.8vmin'/>";
+			}	
+		}
+	)
+
+	// # download draw button #
+	const downloadDrawButton = document.createElement("button");
+	downloadDrawButton.classList.add("cesium-button", "cesium-toolbar-button");
+	downloadDrawButton.innerHTML = "<img src='./files/Icon_DownloadDraw.svg' style='max-width:1.8vmin;max-height:1.8vmin'/>";
+	toolbar.insertBefore(downloadDrawButton, helpButton);
+	$(downloadDrawButton).on(
+		"click",
+		function () {
+			const polylines = new Cesium.EntityCollection();
+			polylines.add(track);
+  			Cesium.exportKml({
+				entities: polylines,
+				kmz: false,
+      		})
+    		.then(
+				function (result) {
+					save("MapME_YourTrack.kml", result.kml);
+    			}
+			)
+		}
 	);
 
 	//#############################################################################
@@ -310,7 +494,7 @@
 	//### LOADER ##################################################################
 	//#############################################################################
 	$(window).on('load', function(){
-		setTimeout(removeLoader, 2500);
+		setTimeout(removeLoader, 1500);
 	});
 	function removeLoader(){
 		hideDiv($("#welcomeDiv"))
