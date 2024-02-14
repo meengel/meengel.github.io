@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>MapME</title>
+
+	<!-- Own Style -->
+	<link rel="stylesheet" href="./styles/style.css" />
+	<link rel="stylesheet" href="./styles/style_buttons.css" />
+	<link rel="stylesheet" href="./styles/style_loader.css" />
+
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+	
+	<!-- Include the CesiumJS JavaScript and CSS files -->
+	<script src="https://cesium.com/downloads/cesiumjs/releases/1.99/Build/Cesium/Cesium.js"></script>
+	<link href="https://cesium.com/downloads/cesiumjs/releases/1.99/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+
+</head>
+<body>
+
+<div id="loadingDiv" class="loader" alt="Loader">
+	<img id="loading-image" class="loader_image" src="./files/MapME.jpg" alt="Loading..." />
+	<div id="loader_gifDiv" class="loader_gif"></div>
+</div>
+
+<div id="disclaimerDiv" class="disclaimer">
+	<div id="disclaimer_text" class="disclaimer_text" alt="Disclaimer" />
+	<h1>Welcome to MapME!</h1>
+	<p>We are working on this mapping application in our leisure time for fun.
+	Hence, you are free to use it the way you like as long as you credit us properly and help spreading the message!<br/></p>
+	<p>Please note that all information provided by this tool is experimental and we explicitely exclude any responsibility of ours for the things you are doing with it!</p>
+	<p>We are changing credentials for our datasets regularly in an irregular manner such that there is no possibility to misuse them except you have some very fancy tricks.
+	If you still should try to misuse our service, we will find out and take care of it/you!</p>
+	<p><b>Best<br/>Michael Engel</b></p>
+	<button id="disclaimerbutton_acceptDiv" class="button_accept">ACCEPT</button><button id="disclaimerbutton_declineDiv" class="button_decline">DECLINE</button>
+	</div>
+</div>
+
+<div id="welcomeDiv" class="welcome">
+	<div id="welcome_text" class="welcome_text" alt="Welcome"/>
+	<h1 style="text-align:center">Keep your enthusiasm!</h1>
+	<img src='./files/FaceME.jpg' style='max-width:90vmin;max-height:90vmin'/>
+	</div>
+</div>
+
+<div id="cesiumContainer" style="width:100%;height:100%;"></div>
+
+<script>
+  	//#############################################################################
+	//### Predefinitions ##########################################################
+	//#############################################################################
+  	Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIwNmQ2ZTQ5ZS0zMjZlLTQ2ZjMtOTMxYy02YjM3ZmQ2ZjgwMDIiLCJpZCI6ODE1OTUsImlhdCI6MTY0NDIxODI4OH0.qnvoYt8vjupU8UXaRGZeBq8OPa1Mqfb9cq-ETU1TxVI"
+
+	// ## Parse URL ##
+    const baseurl = (' '+document.URL.split("?")[0]).slice(1);
+    const queryString = window.location.search;
+	var urlParams = new URLSearchParams(queryString);
+	urlParams.forEach(console.log)
+	var camera_x = urlParams.get('lon')
+	if (!camera_x) {
+		camera_x = 10.9337
+	}
+	var camera_y = urlParams.get('lat')
+	if (!camera_y) {
+		camera_y = 47.23 // 47.3603
+	}
+	var camera_z = urlParams.get('z')
+	if (!camera_z) {
+		camera_z = 16000
+	}
+	var camera_heading = urlParams.get('heading')
+	if (!camera_heading) {
+		camera_heading = 360
+	}
+	var camera_pitch = urlParams.get('pitch')
+	if (!camera_pitch) {
+		camera_pitch = -45
+	}
+
+  	// ## Search Engine ##
+	function OpenStreetMapNominatimGeocoder() {}
+    OpenStreetMapNominatimGeocoder.prototype.geocode = function (input) {
+  		var endpoint = "https://nominatim.openstreetmap.org/search";
+  		var resource = new Cesium.Resource({
+			url: endpoint,
+			queryParameters: {
+  				format: "json",
+  				q: input,
+			},
+  		});
+
+  		return resource.fetchJson().then(function (results) {
+			var bboxDegrees;
+			return results.map(function (resultObject) {
+  				bboxDegrees = resultObject.boundingbox;
+  				return {
+				displayName: resultObject.display_name,
+				destination: Cesium.Rectangle.fromDegrees(
+  					bboxDegrees[2],
+  					bboxDegrees[0],
+  					bboxDegrees[3],
+  					bboxDegrees[1]
+				),
+  				};
+			});
+  		});
+	};
+	
+	//#############################################################################
+	//### DEFINE VIEWER ###########################################################
+	//#############################################################################
+	// ## Basic Definition ##
+    const viewer = new Cesium.Viewer('cesiumContainer', {	
+      	terrainProvider: new Cesium.CesiumTerrainProvider({
+                            url: Cesium.IonResource.fromAssetId(952656),
+                         }),//Cesium.createWorldTerrain(),
+		imageryProvider: false,
+  		homeButton: true,
+		fullscreenButton: true,
+		CreditsDisplay: true,
+		infoBox: false,
+  		geocoder: new OpenStreetMapNominatimGeocoder(),
+	  	sceneMode: Cesium.SceneMode.SCENE3D,
+  		sceneModePicker: true,
+  		navigationHelpButton: true,
+	  	animation: false,
+		timeline: false,
+		baseLayerPicker: false,
+		useBrowserRecommendedResolution: false,
+		shadows: false,
+		selectionIndicator: false,
+	});
+	viewer._cesiumWidget._creditContainer.parentNode.removeChild(
+        viewer._cesiumWidget._creditContainer
+	);
+	viewer.scene.globe.baseColor = Cesium.Color.WHITE.withAlpha(0.3);
+	viewer.scene.globe.depthTestAgainstTerrain = true; // important as to https://github.com/CesiumGS/cesium/issues/8179
+
+    // ## Terrain Exaggeration for better visibility ##
+	viewer.scene.globe.terrainExaggeration = 1;//Math.sqrt(2);
+
+	//#############################################################################
+	//### GEOMETRY ################################################################
+	//#############################################################################
+	let track;
+	var geometry = urlParams.get("geometry")
+	if (!geometry) {
+		console.log("No geometry given!")
+	} else {
+		track = drawShape(JSON.parse(geometry))
+	}
+
+    //#############################################################################
+	//### CAMERA ##################################################################
+	//#############################################################################
+	// # home #
+	var extent = Cesium.Rectangle.fromDegrees(10.08,46.63,12.98,47.75);
+	Cesium.Camera.DEFAULT_VIEW_RECTANGLE = extent;
+
+	// # start #
+	viewer.camera.flyTo({
+		destination: Cesium.Cartesian3.fromDegrees(camera_x, camera_y, camera_z),
+		orientation: {
+			heading: Cesium.Math.toRadians(camera_heading),
+			pitch: Cesium.Math.toRadians(camera_pitch),
+			roll: 0.0,
+    	},
+	});
+
+	// # Camera Position URL #
+	viewer.camera.moveEnd.addEventListener(function() { 
+		var lonlatz = Cesium.Cartographic.fromCartesian(viewer.camera.position);
+		newurl = baseurl+`?lon=${Cesium.Math.toDegrees(lonlatz.longitude)}&lat=${Cesium.Math.toDegrees(lonlatz.latitude)}&z=${lonlatz.height}&heading=${Cesium.Math.toDegrees(viewer.camera.heading)}&pitch=${Cesium.Math.toDegrees(viewer.camera.pitch)}`
+		if (Cesium.defined(track)) {
+			newurl = newurl+`&geometry=${JSON.stringify(track.polyline.positions._value)}`
+		}
+		window.history.replaceState('', '', newurl);
+	});
+
+	// ### LIMIT VIEW ###
+    
+    //navigator.geolocation.getCurrentPosition(alert); # get position of user
+
+	//#############################################################################
+	//### DEFINE LAYERS ###########################################################
+	//#############################################################################
+	// ## Baselayer ##
+	WMTS_OpenStreetMap = new Cesium.OpenStreetMapImageryProvider({
+		//url : 'https://a.tile.openstreetmap.org/',
+		url: "https://a.tile.openstreetmap.fr/osmfr/"
+    });
+
+	WMTS_GoogleSatellite = new Cesium.UrlTemplateImageryProvider({
+		url: "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}#",
+	})
+	
+	// ## Standard layer
+	WMTS_GoogleSatellite_layer = viewer.imageryLayers.addImageryProvider(WMTS_GoogleSatellite);
+
+	WMTS_OpenStreetMap_layer = viewer.imageryLayers.addImageryProvider(WMTS_OpenStreetMap);
+	WMTS_OpenStreetMap_layer.alpha = 0.5;
+	WMTS_OpenStreetMap_layer.contrast = 1.5;
+	WMTS_OpenStreetMap_layer.saturation = 2.5;
+	//WMTS_OpenStreetMap_layer.hue = 210/360;
+	WMTS_OpenStreetMap_layer.brightness = 0.8;
+
+	// # Track #
+	viewer.dataSources.add(
+	Cesium.GpxDataSource.load(
+		"OrtlerBrentaQuerung.gpx",
+		{
+			clampToGround: true,
+			trackColor: Cesium.Color.RED,
+			waypointImage: false,
+		}
+	)
+	)
+
+	//#############################################################################
+	//### draw tracks #############################################################
+	//#############################################################################
+	// CHECK OUT https://cesium.com/blog/2016/03/21/drawing-on-the-globe-and-3d-models
+	
+	// ## checks ##
+	if (!viewer.scene.pickPositionSupported) {
+		alert("This browser does not support pickPosition.");
+	}
+	if (!Cesium.Entity.supportsPolylinesOnTerrain(viewer.scene)) {
+		alert(
+			"This browser does not support polylines on terrain."
+		);
+	}
+
+	// ## predefinitions ##
+	let drawingMode = false;
+
+	let activeShapePoints = [];
+	let activeShape;
+	let floatingPoint;
+	// let track; // -> move to start for URL parsing
+
+	viewer.cesiumWidget.screenSpaceEventHandler.removeInputAction(
+		Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK
+	);
+
+	// ## funs ##
+	// # create point entity
+	function createPoint(worldPosition, show=false) {
+		const point = viewer.entities.add({
+			position: worldPosition,
+			point: {
+				color: Cesium.Color.WHITE,
+				pixelSize: 10,
+				heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+			},
+			show: show,
+		});
+		return point;
+	}
+
+	// # draw geometry #
+	function drawShape(positionData) {
+		let shape;
+		shape = viewer.entities.add({
+			polyline: {
+				positions: positionData,
+				clampToGround: true,
+				width: 3,
+				material: new Cesium.ColorMaterialProperty(
+					Cesium.Color.fromBytes(192, 0, 0, 255)
+				),
+			},
+		});
+		return shape;
+	}
+
+	// # redraw geometry # -> so it's not dynamic and the dynamic geometry is removed.
+	function terminateShape() {
+		activeShapePoints.pop();
+		track = drawShape(activeShapePoints);
+		viewer.entities.remove(floatingPoint);
+		viewer.entities.remove(activeShape);
+		floatingPoint = undefined;
+		activeShape = undefined;
+		activeShapePoints = [];
+		return track
+	}
+
+	// # download data #
+	function save(filename, data) {
+		const blob = new Blob([data], {type: 'text/csv'});
+		if(window.navigator.msSaveOrOpenBlob) {
+			window.navigator.msSaveBlob(blob, filename);
+		}
+		else{
+			const elem = window.document.createElement('a');
+			elem.href = window.URL.createObjectURL(blob);
+			elem.download = filename;        
+			document.body.appendChild(elem);
+			elem.click();        
+			document.body.removeChild(elem);
+		}
+	}
+
+	// ## handler ##
+	// # handle LEFT_CLICK #
+	const handler = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
+	handler.setInputAction(
+		function (event) {
+			if (drawingMode){
+				const earthPosition = viewer.scene.pickPosition(event.position);
+				if (Cesium.defined(earthPosition)) {
+					if (activeShapePoints.length === 0) {
+						viewer.entities.remove(track);
+						floatingPoint = createPoint(earthPosition, true);
+						activeShapePoints.push(earthPosition);
+						const dynamicPositions = new Cesium.CallbackProperty(
+							function () {
+								return activeShapePoints;
+							},
+							false
+						);
+					activeShape = drawShape(dynamicPositions);
+					}
+					activeShapePoints.push(earthPosition);
+				}
+			}
+		},
+		Cesium.ScreenSpaceEventType.LEFT_CLICK
+	);
+
+	// # handle MOUSE_MOVE #
+	handler.setInputAction(
+		function (event) {
+			if (drawingMode){
+				if (Cesium.defined(floatingPoint)) {
+					const newPosition = viewer.scene.pickPosition(event.endPosition);
+					if (Cesium.defined(newPosition)) {
+						floatingPoint.position.setValue(newPosition);
+						activeShapePoints.pop();
+						activeShapePoints.push(newPosition);
+					}
+				}
+			}
+		},
+		Cesium.ScreenSpaceEventType.MOUSE_MOVE
+	);
+
+	// # handle RIGHT_CLICK #
+	handler.setInputAction(function (event) {
+		if (drawingMode){
+			track = terminateShape();
+			// TODO: reset url
+		}
+	}, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
+
+	//viewer.addToolbarMenu(options);
+
+	// ## draw buttons ##
+	const toolbar = document.querySelector("div.cesium-viewer-toolbar");
+	const modeButton = document.querySelector("span.cesium-sceneModePicker-wrapper");
+	const helpButton = document.querySelector("span.cesium-navigationHelpButton-wrapper");
+
+	// # drawing mode button #
+	const drawButton = document.createElement("button");
+	drawButton.classList.add("cesium-button", "cesium-toolbar-button");
+	drawButton.innerHTML = "<img src='./files/Icon_Draw_off.svg' style='max-width:1.8vmin;max-height:1.8vmin'/>";
+	toolbar.insertBefore(drawButton, helpButton);
+	$(drawButton).on(
+		"click",
+		function(){
+			if (drawingMode === false){
+				drawingMode = true;
+				console.log("Drawing enabled!")
+				drawButton.innerHTML = "<img src='./files/Icon_Draw_on.svg' style='max-width:1.8vmin;max-height:1.8vmin'/>";
+			} else {
+				drawingMode = false;
+				console.log("Drawing disabled!")
+				drawButton.innerHTML = "<img src='./files/Icon_Draw_off.svg' style='max-width:1.8vmin;max-height:1.8vmin'/>";
+			}	
+		}
+	)
+
+	// # download draw button #
+	const downloadDrawButton = document.createElement("button");
+	downloadDrawButton.classList.add("cesium-button", "cesium-toolbar-button");
+	downloadDrawButton.innerHTML = "<img src='./files/Icon_DownloadDraw.svg' style='max-width:1.8vmin;max-height:1.8vmin'/>";
+	toolbar.insertBefore(downloadDrawButton, helpButton);
+	$(downloadDrawButton).on(
+		"click",
+		function () {
+			const polylines = new Cesium.EntityCollection();
+			polylines.add(track);
+  			Cesium.exportKml({
+				entities: polylines,
+				kmz: false,
+      		})
+    		.then(
+				function (result) {
+					save("MapME_YourTrack.kml", result.kml);
+    			}
+			)
+		}
+	);
+
+	//#############################################################################
+	//### BUTTONS #################################################################
+	//#############################################################################	
+	$(disclaimerbutton_acceptDiv).on('click', function(){
+		removeDiv($("#disclaimerDiv"));
+		showDiv($("#welcomeDiv"));
+		setTimeout(removeWelcome,2000);
+	});
+	function removeWelcome(){
+		removeDiv($("#welcomeDiv"))
+	}
+
+	$(disclaimerbutton_declineDiv).on('click', function(){
+		hideDiv($("#cesiumContainer"));
+		removeDiv($("#welcomeDiv"));
+		removeDiv($("#disclaimerDiv"));
+		removeDiv($("#cesiumContainer"));
+	});
+
+	//#############################################################################
+	//### LOADER ##################################################################
+	//#############################################################################
+	$(window).on('load', function(){
+		setTimeout(removeLoader, 1500);
+	});
+	function removeLoader(){
+		hideDiv($("#welcomeDiv"))
+		removeDiv($("#loadingDiv"))
+	}
+
+	//#############################################################################
+	//### UTILS ###################################################################
+	//#############################################################################
+	function removeDiv(Div){
+		Div.fadeOut(500, function() {
+			Div.remove();
+		});  
+	}
+	function showDiv(Div){
+		Div.show()
+	}
+	function hideDiv(Div){
+		Div.hide()
+	}
+</script>
+</div>
+</body>
+</html>
