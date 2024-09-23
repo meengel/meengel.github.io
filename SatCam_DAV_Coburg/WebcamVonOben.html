@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SatCam by Michael Engel</title>
+    
+    <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge, chrome=1" />
+    <title>TUMap</title>
+
+    <!-- Own Style -->
+	<link rel="stylesheet" href="./styles/style.css" />
+	<link rel="stylesheet" href="./styles/style_buttons.css" />
+	<link rel="stylesheet" href="./styles/style_loader.css" />
+    
+    <!-- Imports NOT CLEANED YET -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.2.0/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.2.0/leaflet.js"></script>
+    
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    
+    <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js'></script>
+    <link rel='stylesheet' href='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css'/>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol/dist/L.Control.Locate.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol/dist/L.Control.Locate.min.js" charset="utf-8"></script>  
+    
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+
+</head>
+<body>
+    <div id="loadingDiv" class="loader" alt="Loader">
+        <img id="loading-image" class="loader_image" src="./files/MapME.jpg" alt="Loading..." />
+        <div id="loader_gifDiv" class="loader_gif"></div>
+    </div>
+    
+    <div id="disclaimerDiv" class="disclaimer">
+        <div id="disclaimer_text" class="disclaimer_text" alt="Disclaimer" />
+        <h1>Welcome to SatCam - your webcam from above!</h1>
+        <p>We are working on this mapping application in our leisure time for fun.
+        Hence, you are free to use it the way you like as long as you credit us properly and help spreading the message!
+        Many thanks to the Copernicus Data Space Ecosystem (CDSE) for implementing fast and reliable interfaces for satellite data acquisition!</p>
+        <p>Please note that all information provided by this tool is experimental and we explicitely exclude any responsibility of ours for the things you are doing with it!</p>
+        <p>We are changing credentials for our datasets regularly in an irregular manner such that there is no possibility to misuse them except you have some very fancy tricks.
+        If you still should try to misuse our service, we will find out and take care of it/you!</p>
+        <p><b>Best<br/>Michael Engel</b></p>
+        <button id="disclaimerbutton_acceptDiv" class="button_accept">ACCEPT</button><button id="disclaimerbutton_declineDiv" class="button_decline">DECLINE</button>
+        </div>
+    </div>
+    
+    <div id="welcomeDiv" class="welcome">
+        <div id="welcome_text" class="welcome_text" alt="Welcome"/>
+        <h1 style="text-align:center">Many thanks to</h1>
+        <img src='./files/cdse_cover.jpg' style='max-width:90vmin;max-height:90vmin'/>
+        </div>
+    </div>
+
+    <div id="map" class='map'></div>
+
+    <!--<input type="text" id="datepicker" placeholder="Datum" style="width:80px; position: absolute; bottom: 25px; left: 5px; z-index: 1000;">
+-->
+    <script>
+        // ### DEFINE LAYERS ###
+        // ## Openstreetmap ##
+        WMTS_Openstreetmap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org" target="_blank">OpenStreetMap</a>',
+            opacity: 0.6,
+        })
+        WMTS_Openstreetmap.on('tileload', function(event) {
+            var tile = event.tile;
+            tile.style.filter = 'saturate(3) brightness(0.8)'; // Adjust saturation and brightness
+        });
+
+        // ## Tyrol ##
+        WMS_hillshadeContours_Tirol = L.tileLayer.wms("https://gis.tirol.gv.at/arcgis/services/Service_Public/terrain/MapServer/WMSServer", {
+            attribution: '&copy; <a href="https://data-tiris.opendata.arcgis.com/" target="_blank">OpenData Tirol</a>',
+            minZoom:1, 
+            maxZoom:18,
+            format: "image/png",
+            layers: "Image_Schummerung_Oberflaechenmodell,Hoehenschichtlinien_20m",
+        });
+
+        WMS_slope_Tirol = L.tileLayer.wms("https://gis.tirol.gv.at/arcgis/services/Service_Public/terrain/MapServer/WMSServer", {
+            attribution: '&copy; <a href="https://data-tiris.opendata.arcgis.com/" target="_blank">OpenData Tirol</a>',
+            minZoom:1, 
+            maxZoom:18,
+            format: "image/png",
+            layers: "Image_Gelaendeneigung_Wintersport,Hoehenschichtlinien_20m",
+            layers_opacity: "1,0.3,1",
+            opacity: "0.3",
+        });
+
+        // ## CDSE ##
+        let baseUrl = "https://sh.dataspace.copernicus.eu/ogc/wms/e2c259fc-b18c-4627-8a51-af09e8fecd77";
+        let WMS_SnowME = L.tileLayer.wms(baseUrl, {
+            tileSize: 512,
+            attribution: '&copy; <a href="https://dataspace.copernicus.eu/" target="_blank">Contains modified Copernicus Sentinel data (2024)</a>',
+            maxcc:100, 
+            minZoom:1, 
+            maxZoom:18,
+            preview: 2,
+            format: "image/jpg",
+            opacity: 1,
+            preset:"SNOWME", 
+            layers:"SNOWME,DATE", 
+            time:"2024-01-01/None",
+        });
+        WMS_SnowME.on('tileload', function(event) {
+            var tile = event.tile;
+            tile.style.filter = 'saturate(1.2) brightness(1.1)'; // Adjust saturation and brightness
+        });
+
+        let WMS_SnowME_Overlay = L.tileLayer.wms(baseUrl, {
+            tileSize: 512,
+            attribution: '&copy; <a href="https://dataspace.copernicus.eu/" target="_blank">Contains modified Copernicus Sentinel data (2024)</a>',
+            maxcc:100, 
+            minZoom:1, 
+            maxZoom:18,
+            preview: 2,
+            format: "image/png",
+            preset:"SNOWME-OVERLAY", 
+            layers:"SNOWME-OVERLAY,DATE", 
+            time:"2024-01-01/None",
+        });
+
+        // ### DEFINE MAP ###
+        let baseMaps = {
+            'Webcam Mode': WMS_SnowME,
+            'Map Mode': WMTS_Openstreetmap,
+        };
+
+        // INITIALIZE MAP
+        var center = [47.35998499618055, 10.933614621003855]; // lat,lng in EPSG:4326 Coburger Hütte
+        let map = L.map('map', {
+            center: center, 
+            zoom: 14,
+            zoomSnap: 0.25,
+            zoomDelta: 1,
+            minZoom: 12,
+            maxZoom: 16,
+        });
+
+        var southWest = L.latLng(47.31541751737695, 10.809839051962888);
+        var northEast = L.latLng(47.431792397137976, 11.167777764718428);
+        var bounds = L.latLngBounds(southWest, northEast);
+
+        map.setMaxBounds(map.getBounds());
+        map.setMaxBounds(bounds);
+
+        // baselayer
+        map.addControl(new L.control.layers(baseMaps));
+
+        map.on('baselayerchange', function(eventLayer) {
+            if (eventLayer.name === 'Map Mode') {
+                this.removeLayer(WMS_SnowME);
+
+                this.addLayer(WMS_hillshadeContours_Tirol);
+                this.addLayer(WMTS_Openstreetmap);
+                legend.addTo(this);
+                this.addLayer(WMS_SnowME_Overlay);
+            } else {
+                this.addLayer(WMS_SnowME);
+
+                this.removeControl(legend);
+                this.removeLayer(WMS_SnowME_Overlay)
+                this.removeLayer(WMS_hillshadeContours_Tirol);
+                this.removeLayer(WMTS_Openstreetmap);
+            }
+        });
+
+        // time
+        var customControl = L.control({position: 'bottomleft'});
+        customControl.onAdd = function (map) {
+            var div = L.DomUtil.create('div', 'custom-control');
+            div.innerHTML = `
+                <button id="prev"><<</button>
+                <input type="text" id="datepicker" style="width:80px; z-index: 3;">
+                <button id="next">>></button>
+            `;
+            return div;
+        };
+        customControl.addTo(map);
+
+        // legend
+        var legend = L.control({position: "bottomright"});
+        legend.onAdd = function(map) {
+        var div = L.DomUtil.create("div", "legend");
+        div.innerHTML += "<div class='square' style='background: rgba(255,255,255,0.5); padding:5px; border:1px; width:auto; height:auto'><span><b>SnowME Mask</b></span><div class='square' style='background: rgba(255,255,0,0.5); padding:5px; border:1px; width:auto; height:auto'><span><font color=#000>Clouds</font></span></div><div class='square' style='background: rgba(0,204,255,0.5); padding:5px; border:1px; width:auto; height:auto'><span><font color=#000>Snow</font></span></div></div>";
+        return div;
+        };
+
+        // standard case
+        map.attributionControl.addAttribution("&copy; Michael Engel")
+        WMS_SnowME.addTo(map);
+
+        //#############################################################################
+        //### DATEPICKER ##############################################################
+        //#############################################################################
+        var currentDate = new Date();
+        var oneYearBefore = new Date();
+        oneYearBefore.setFullYear(currentDate.getFullYear()-1);
+
+        $("#datepicker").datepicker({
+            dateFormat: "yy-mm-dd",
+            minDate: oneYearBefore,
+            maxDate: currentDate,
+            onSelect: function(dateText) {
+                // Update the WMS layer with the selected date
+                updateWMSLayer(dateText);
+            }
+        }).datepicker("setDate", currentDate);
+
+        $("#prev").click(function() {
+                var date = $("#datepicker").datepicker("getDate");
+                date.setDate(date.getDate() - 1);
+                $("#datepicker").datepicker("setDate", date);
+                updateWMSLayer($.datepicker.formatDate("yy-mm-dd", date));
+            });
+
+        $("#next").click(function() {
+            var date = $("#datepicker").datepicker("getDate");
+            date.setDate(date.getDate() + 1);
+            $("#datepicker").datepicker("setDate", date);
+            updateWMSLayer($.datepicker.formatDate("yy-mm-dd", date));
+        });
+
+        function updateWMSLayer(dateText) {
+            WMS_SnowME.setParams({ time: dateText });
+            WMS_SnowME_Overlay.setParams({ time: dateText });
+        }
+        
+        //#############################################################################
+        //### BUTTONS #################################################################
+        //#############################################################################	
+        $(disclaimerbutton_acceptDiv).on('click', function(){
+            removeDiv($("#disclaimerDiv"));
+            showDiv($("#welcomeDiv"));
+            setTimeout(removeWelcome,2000);
+        });
+        function removeWelcome(){
+            removeDiv($("#welcomeDiv"))
+        }
+
+        $(disclaimerbutton_declineDiv).on('click', function(){
+            hideDiv($("#datepicker"));
+            hideDiv($("#map"));
+            removeDiv($("#welcomeDiv"));
+            removeDiv($("#disclaimerDiv"));
+            removeDiv($("#datepicker"));
+            removeDiv($("#map"));
+        });
+
+        //#############################################################################
+        //### LOADER ##################################################################
+        //#############################################################################
+        $(window).on('load', function(){
+            setTimeout(removeLoader, 1000);
+        });
+        function removeLoader(){
+            hideDiv($("#welcomeDiv"))
+            removeDiv($("#loadingDiv"))
+        }
+
+        //#############################################################################
+        //### UTILS ###################################################################
+        //#############################################################################
+        function removeDiv(Div){
+            Div.fadeOut(500, function() {
+                Div.remove();
+            });  
+        }
+        function showDiv(Div){
+            Div.show()
+        }
+        function hideDiv(Div){
+            Div.hide()
+        }
+    </script>
+</body>
+</html>
+

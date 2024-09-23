@@ -1,0 +1,55 @@
+/* Loading Screen */
+.loader {
+    width:100%;
+    height:100%;
+    top:0px;
+    left:0px;
+    position:fixed;
+    display:block;
+    z-index:104;
+    background: rgba(255,255,255,1);
+}
+    /* Loader Rotating Thing*/
+.loader_gif {       
+    border-top: 2.5vmin solid rgba(255,255,255,0);
+    border-right: 2.5vmin solid rgba(0, 101, 189, 1);
+    border-bottom: 2.5vmin solid rgba(255,255,255,0);
+    border-left: 2.5vmin solid rgba(0, 101, 189, 1);
+    border-radius: 50%;
+    -webkit-animation: spin 2s linear infinite; /* Safari */
+    animation: spin 2s linear infinite;
+
+    width: 90vmin;
+    height: 90vmin;
+    position: absolute;
+    top: 50%; left:50%;
+    margin: -47.5vmin 0 0 -47.5vmin;
+    z-index: 105;
+}
+    /* Safari compatibility*/
+@-webkit-keyframes spin {
+    0%{
+        -webkit-transform: rotate(0deg);
+    }
+    100%{
+        -webkit-transform: rotate(360deg);
+    }
+}
+@keyframes spin {
+    0%{
+        transform: rotate(0deg);
+    }
+    100%{
+        transform: rotate(360deg);
+    }
+}
+
+    /* Loader Image */
+.loader_image {
+    max-width: 63vmin;
+    max-height: 63vmin;
+    position: absolute;
+    top: 50%; left:50%;
+    transform: translate(-50%, -50%);
+    z-index: 106;
+}        
