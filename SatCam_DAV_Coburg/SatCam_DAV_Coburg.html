@@ -36,7 +36,7 @@
 </head>
 <body>
     <div id="loadingDiv" class="loader" alt="Loader">
-        <img id="loading-image" class="loader_image" src="./files/MapME.jpg" alt="Loading..." />
+        <img id="loading-image" class="loader_image" src="./files/SatCam.jpg" alt="Loading..." />
         <div id="loader_gifDiv" class="loader_gif"></div>
     </div>
     
@@ -71,6 +71,8 @@
         WMTS_Openstreetmap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org" target="_blank">OpenStreetMap</a>',
             opacity: 0.6,
+            tileSize: 512,
+            zoomOffset: -1,
         })
         WMTS_Openstreetmap.on('tileload', function(event) {
             var tile = event.tile;
@@ -241,7 +243,7 @@
         $(disclaimerbutton_acceptDiv).on('click', function(){
             removeDiv($("#disclaimerDiv"));
             showDiv($("#welcomeDiv"));
-            setTimeout(removeWelcome,2000);
+            setTimeout(removeWelcome, 2000);
         });
         function removeWelcome(){
             removeDiv($("#welcomeDiv"))
@@ -260,7 +262,7 @@
         //### LOADER ##################################################################
         //#############################################################################
         $(window).on('load', function(){
-            setTimeout(removeLoader, 1000);
+            setTimeout(removeLoader, 1500);
         });
         function removeLoader(){
             hideDiv($("#welcomeDiv"))
