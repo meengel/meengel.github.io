@@ -110,7 +110,7 @@
             opacity: 1,
             preset:"SNOWME", 
             layers:"SNOWME,DATE", 
-            time: new Date(),
+            time: new Date().setHours(23,59,59,999),
         });
         WMS_SnowME.on('tileload', function(event) {
             var tile = event.tile;
@@ -127,7 +127,7 @@
             format: "image/png",
             preset:"SNOWME-OVERLAY", 
             layers:"SNOWME-OVERLAY,DATE", 
-            time: new Date(),
+            time: new Date().setHours(23,59,59,999),
         });
 
         // ### DEFINE MAP ###
